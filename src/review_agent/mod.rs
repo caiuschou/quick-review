@@ -4,6 +4,7 @@
 //! after invoke. See `idea/langgraph-review-agent.md`.
 
 mod agent;
+mod mcp_review_tools;
 mod prompts;
 mod review_tools;
 
