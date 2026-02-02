@@ -1,18 +1,19 @@
-//! Agent reviewer trait: runs code review over `ReviewInput` and returns `ReviewResult`.
+//! Agent reviewer trait: runs code review for a PR/MR and returns `ReviewResult`.
 //!
-//! Implemented by opencode-sdk integration (session + prompt → assistant_reply). Used by `ReviewPipeline`.
-//! Tests can use a mock that returns a fixed `ReviewResult`.
+//! The agent decides which MCP tools to call (e.g. fetch PR content, post review).
+//! Implemented by LangGraph ReAct agent. Used by `ReviewPipeline`.
 
-use crate::review_input::ReviewInput;
+use crate::pr_url::PrUrl;
 use crate::review_result::ReviewResult;
 
-/// Runs agent code review on the given input. May use a local project path for context.
+/// Runs agent code review for the given PR/MR. The agent decides when to call MCP (fetch/post).
 pub trait AgentReviewer: Send + Sync {
     /// Performs review; `project_path` is optional and may be used for repo context.
+    /// The agent fetches PR content and posts the result via its tools (MCP).
     fn review(
         &self,
         project_path: Option<&std::path::Path>,
-        input: &ReviewInput,
+        pr: &PrUrl,
     ) -> Result<ReviewResult, ReviewError>;
 }
 

@@ -1,7 +1,6 @@
 //! Binary entry: parse PR/MR URL from args, run review pipeline.
 //!
-//! Uses MockMcpProvider and LangGraphReviewAgent (ReAct) with a MockLlm that
-//! returns submit_review; replace with real MCP and LLM for production.
+//! Uses MockMcpProvider and LangGraphReviewAgent (ReAct). The agent decides when to call MCP (fetch/post); replace with real MCP and LLM for production.
 
 use std::sync::Arc;
 
@@ -12,7 +11,7 @@ use quick_review::review_input::ReviewInput;
 use quick_review::review_result::ReviewResult;
 use quick_review::{LangGraphReviewAgent, McpProvider, ReviewPipeline};
 
-/// Placeholder MCP provider: returns fixed input, no-op post.
+/// Placeholder MCP provider: returns fixed input on fetch, no-op post.
 struct MockMcpProvider;
 impl McpProvider for MockMcpProvider {
     fn fetch(&self, _pr: &PrUrl) -> Result<ReviewInput, quick_review::mcp_provider::McpError> {
@@ -41,19 +40,26 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     };
 
-    // Mock LLM that returns a single tool call: submit_review (so the ReAct graph runs one round).
+    // Mock LLM: first round get_pr_context, then submit_review (agent decides MCP calls).
     let mock_llm = MockLlm::new(
         "",
-        vec![ToolCall {
-            name: "submit_review".to_string(),
-            arguments: r#"{"summary":"Mock review from ReAct agent.","line_comments":[]}"#.to_string(),
-            id: None,
-        }],
+        vec![
+            ToolCall {
+                name: "get_pr_context".to_string(),
+                arguments: r#"{"part":"diff"}"#.to_string(),
+                id: None,
+            },
+            ToolCall {
+                name: "submit_review".to_string(),
+                arguments: r#"{"summary":"Mock review from ReAct agent.","line_comments":[]}"#.to_string(),
+                id: None,
+            },
+        ],
     );
-    let agent = LangGraphReviewAgent::new(Arc::new(mock_llm))
+    let mcp = Arc::new(MockMcpProvider);
+    let agent = LangGraphReviewAgent::new(Arc::new(mock_llm), mcp)
         .map_err(|e| -> Box<dyn std::error::Error> { Box::new(e) })?;
-    let pipeline: ReviewPipeline<MockMcpProvider, LangGraphReviewAgent> =
-        ReviewPipeline::new(MockMcpProvider, agent);
+    let pipeline = ReviewPipeline::new(agent);
     run_pipeline(&pipeline, &pr)?;
     Ok(())
 }

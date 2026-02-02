@@ -11,10 +11,9 @@ pub fn parse_pr_url_from_args(args: &[String]) -> Option<PrUrl> {
     PrUrl::parse(url)
 }
 
-/// Runs the pipeline with the given provider and reviewer. Prints result summary to stdout.
-pub fn run_pipeline<M, A>(pipeline: &ReviewPipeline<M, A>, pr: &PrUrl) -> Result<(), Box<dyn std::error::Error>>
+/// Runs the pipeline with the given reviewer. Prints result summary to stdout.
+pub fn run_pipeline<A>(pipeline: &ReviewPipeline<A>, pr: &PrUrl) -> Result<(), Box<dyn std::error::Error>>
 where
-    M: crate::mcp_provider::McpProvider,
     A: crate::agent_reviewer::AgentReviewer,
 {
     let result = pipeline.run(pr)?;
