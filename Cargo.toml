@@ -6,8 +6,12 @@ description = "Agent-powered code review for GitHub PR / GitLab MR"
 authors = []
 
 [dependencies]
-# Placeholder: add mcp-rust, opencode-sdk when integrating.
-# tokio = { version = "1", features = ["full"] }
+# langgraph-rust: ReAct agent (git until published)
+langgraph = { git = "https://github.com/caiuschou/langgraph-rust", default-features = false }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync"] }
+async-trait = "0.1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1.0"
 
 [lib]
 path = "src/lib.rs"
