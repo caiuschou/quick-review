@@ -1,12 +1,16 @@
-//! Binary entry: parse PR/MR URL from args, run review pipeline (placeholder impls).
+//! Binary entry: parse PR/MR URL from args, run review pipeline.
 //!
-//! In the skeleton, pipeline uses mock provider/reviewer; replace with real MCP + opencode-sdk later.
+//! Uses MockMcpProvider and LangGraphReviewAgent (ReAct) with a MockLlm that
+//! returns submit_review; replace with real MCP and LLM for production.
 
+use std::sync::Arc;
+
+use langgraph::{MockLlm, ToolCall};
 use quick_review::cli::{parse_pr_url_from_args, run_pipeline};
 use quick_review::pr_url::PrUrl;
 use quick_review::review_input::ReviewInput;
 use quick_review::review_result::ReviewResult;
-use quick_review::{AgentReviewer, McpProvider, ReviewPipeline};
+use quick_review::{LangGraphReviewAgent, McpProvider, ReviewPipeline};
 
 /// Placeholder MCP provider: returns fixed input, no-op post.
 struct MockMcpProvider;
@@ -26,18 +30,6 @@ impl McpProvider for MockMcpProvider {
     }
 }
 
-/// Placeholder agent reviewer: returns fixed result.
-struct MockAgentReviewer;
-impl AgentReviewer for MockAgentReviewer {
-    fn review(
-        &self,
-        _project_path: Option<&std::path::Path>,
-        _input: &ReviewInput,
-    ) -> Result<ReviewResult, quick_review::agent_reviewer::ReviewError> {
-        Ok(ReviewResult::new().with_summary("Mock review summary (skeleton)."))
-    }
-}
-
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = std::env::args().collect();
     let pr = match parse_pr_url_from_args(&args) {
@@ -48,8 +40,20 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             std::process::exit(1);
         }
     };
-    let pipeline: ReviewPipeline<MockMcpProvider, MockAgentReviewer> =
-        ReviewPipeline::new(MockMcpProvider, MockAgentReviewer);
+
+    // Mock LLM that returns a single tool call: submit_review (so the ReAct graph runs one round).
+    let mock_llm = MockLlm::new(
+        "",
+        vec![ToolCall {
+            name: "submit_review".to_string(),
+            arguments: r#"{"summary":"Mock review from ReAct agent.","line_comments":[]}"#.to_string(),
+            id: None,
+        }],
+    );
+    let agent = LangGraphReviewAgent::new(Arc::new(mock_llm))
+        .map_err(|e| -> Box<dyn std::error::Error> { Box::new(e) })?;
+    let pipeline: ReviewPipeline<MockMcpProvider, LangGraphReviewAgent> =
+        ReviewPipeline::new(MockMcpProvider, agent);
     run_pipeline(&pipeline, &pr)?;
     Ok(())
 }
