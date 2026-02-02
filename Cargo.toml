@@ -1,0 +1,17 @@
+[package]
+name = "quick-review"
+version = "0.1.0"
+edition = "2021"
+description = "Agent-powered code review for GitHub PR / GitLab MR"
+authors = []
+
+[dependencies]
+# Placeholder: add mcp-rust, opencode-sdk when integrating.
+# tokio = { version = "1", features = ["full"] }
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "quick-review"
+path = "src/main.rs"
